@@ -184,6 +184,15 @@ void MyWidget::calculate(int no)
     //        return;
     //开始计算参数
     solveC(maze);
+
+    if(no == 1)
+    {
+        ui->label_2->setText(QString("y = %1 + %2 * x").arg(C[0]).arg(C[1]));
+    }
+    else
+    {
+        ui->label_2->setText(QString("y = %1 / x + %2  + %3 * x").arg(C[0]).arg(C[1]).arg(C[2]));
+    }
     repaint();
 }
 
