@@ -9,9 +9,4 @@ double get2_1(double);
 
 typedef double (*GETVALUE)(double);
 
-
-
-
-
-
 #endif // FUNCTION_H
