@@ -24,7 +24,10 @@ MyWidget::MyWidget(QWidget *parent)
     ui->radioButton_2->setText(QCoreApplication::translate("MyWidget", "span{1/x, 1, x}", nullptr));
     loadStatus = false;
     datafit = false;
+    addData = false;
+    //connect(ui->tableWidget, SIGNAL(), this, SLOT());
     memset(C, 0, sizeof(C)); //清空参数
+    connect(this, SIGNAL(doit(int, int)), this, SLOT(cellChanged(int, int)));
 }
 
 MyWidget::~MyWidget()
@@ -36,6 +39,7 @@ MyWidget::~MyWidget()
 void MyWidget::on_importdata_clicked()
 {
     //clear table
+    points.clear();
     datafit = false;
     QFileDialog *fileDialog = new QFileDialog(this);
     fileDialog->setWindowTitle(tr("Select Dataset"));
@@ -57,7 +61,7 @@ void MyWidget::on_importdata_clicked()
 
     points.clear();
 
-    ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    //ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     minx = miny = INT_MAX;
     maxx = maxy = -INT_MAX;
@@ -77,26 +81,11 @@ void MyWidget::on_importdata_clicked()
         double x, y;
         stream >> x >> y;
         points.push_back(QPointF(x, y));
-        if(x > maxx)
-        {
-            maxx = x;
-        }
-        if(x < minx)
-        {
-            minx = x;
-        }
-
-        if(y > maxy)
-        {
-            maxy = y;
-        }
-        if(y < miny)
-        {
-            miny = y;
-        }
 
         ui->tableWidget->setItem(i, 0, new QTableWidgetItem(QString("%1").arg(x)));
+        ui->tableWidget->item(i, 0)->setFlags(Qt::NoItemFlags | Qt::ItemIsEnabled);
         ui->tableWidget->setItem(i, 1, new QTableWidgetItem(QString("%1").arg(y)));
+        ui->tableWidget->item(i, 1)->setFlags(Qt::NoItemFlags | Qt::ItemIsEnabled);
     }
     loadStatus = true;
 
@@ -124,7 +113,7 @@ void MyWidget::on_pushButton_clicked()
 void MyWidget::calculate(int no)
 {
     datafit = false;
-
+    func = no;
 
     Matrix A;
 
@@ -276,6 +265,29 @@ void MyWidget::paintEvent(QPaintEvent *event)
     paint.setRenderHint(QPainter::Antialiasing);
     if(loadStatus) //如果已经导入数据
     {
+        maxx = -INT_MAX, minx = INT_MAX;
+        maxy = -INT_MAX, miny = INT_MAX;
+        for (int i = 0; i < points.size(); i++) {
+
+            if(points[i].x() > maxx)
+            {
+                maxx = points[i].x();
+            }
+            if(points[i].x() < minx)
+            {
+                minx = points[i].x();
+            }
+
+            if(points[i].y() > maxy)
+            {
+                maxy = points[i].y();
+            }
+            if(points[i].y() < miny)
+            {
+                miny = points[i].y();
+            }
+        }
+        loadStatus = true;
         QPoint lefttop(QPoint( p.x() + SPAN, p.y() + SPAN )), rightbottom(QPoint(p.x() + ui->label->width() - SPAN, p.y() + ui->label->height()- SPAN));
         QPoint leftbottom(QPoint(p.x() + SPAN, p.y() + ui->label->height() - SPAN));
 
@@ -394,5 +406,58 @@ void MyWidget::paintEvent(QPaintEvent *event)
             paint.restore();
         }
     }
+}
+
+
+void MyWidget::on_tableWidget_doubleClicked(const QModelIndex &index)
+{
+    if(datafit == false) return;
+
+    ui->tableWidget->insertRow(ui->tableWidget->rowCount());
+    ui->tableWidget->setItem(ui->tableWidget->rowCount()-1, 0, new QTableWidgetItem());
+    ui->tableWidget->setItem(ui->tableWidget->rowCount()-1, 1, new QTableWidgetItem());
+    if(addData == false) addData = true;
+    disconnect(ui->tableWidget, SIGNAL(doubleClicked(const QModelIndex &)), this, SLOT(on_tableWidget_doubleClicked(const QModelIndex &)));
+}
+
+
+
+void MyWidget::cellChanged(int row, int column)
+{
+    if(datafit && addData)
+    {
+        qDebug() << row << "  " << column;
+        QVariant v =  ui->tableWidget->item(row, 0)->data(Qt::EditRole);
+        if(v.isNull())
+        {
+            addData = false;
+            return;
+        }
+        qreal x = v.toDouble();
+        qreal y;
+        if(func == 1)
+        {
+            y = C[0] + x * C[1];
+            ui->tableWidget->item(row, column)->setData(Qt::EditRole, QVariant(y));
+        }
+        else
+        {
+            y = (1.0 / x) * C[0] + C[1] + C[2] * x ;
+            ui->tableWidget->item(row, column)->setData(Qt::EditRole, QVariant(y));
+        }
+        qDebug() << x << " " << y;
+        points.push_back(QPointF(x, y));
+        addData = true;
+
+    }
+    connect(ui->tableWidget, SIGNAL(doubleClicked(const QModelIndex &)), this, SLOT(on_tableWidget_doubleClicked(const QModelIndex &)));
+    repaint();
+}
+
+void MyWidget::on_tableWidget_cellChanged(int row, int column)
+{
+
+    if(datafit == false || addData == false || column == 1) return;
+    emit doit(row, 1);
 }
 

@@ -101,11 +101,21 @@ private:
     void calculate(int);
     qreal C[10]; //拟合函数参数
     void solveC(Matrix);
+    bool addData;
+    int func;
 private slots:
     void on_importdata_clicked();
 
     void on_pushButton_clicked();
 
+    void on_tableWidget_doubleClicked(const QModelIndex &index);
+    void cellChanged(int row, int column);
+
+//    void on_tableWidget_cellChanged(int row, int column);
+    void on_tableWidget_cellChanged(int row, int column);
+
+signals:
+    void doit(int x, int y);
 private:
     Ui::MyWidget *ui;
 };
